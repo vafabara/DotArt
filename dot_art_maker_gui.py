@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import turtle
-from PIL import Image
+from PIL import Image, ImageDraw
 
 
 WIDTH = 700
@@ -12,7 +12,29 @@ THRESHOLD = 100
 DRAW_TIME = 5
 
 
-def draw_image(image_path, root):
+def save_art(art_image):
+    save_path = filedialog.asksaveasfilename(
+        title="Save Dot Art",
+        defaultextension=".png",
+        initialfile="dot_art.png",
+        filetypes=[
+            ("PNG Image", "*.png"),
+            ("JPEG Image", "*.jpg *.jpeg"),
+            ("BMP Image", "*.bmp")
+        ]
+    )
+
+    if not save_path:
+        return
+
+    try:
+        art_image.save(save_path)
+        messagebox.showinfo("Dot Art Maker", f"Saved to:\n{save_path}")
+    except Exception:
+        messagebox.showerror("Dot Art Maker", "Could not save the image.")
+
+
+def draw_image(image_path, root, save_enabled):
     try:
         image = Image.open(image_path).convert("L")
         image.thumbnail((WIDTH // STEP, HEIGHT // STEP))
@@ -36,6 +58,11 @@ def draw_image(image_path, root):
     pen.penup()
     pen.speed(0)
 
+    # Parallel PIL canvas used only for saving
+    art_image = Image.new("RGB", (WIDTH, HEIGHT), "black")
+    art_draw = ImageDraw.Draw(art_image)
+    radius = DOT_SIZE / 2
+
     image_width, image_height = image.size
 
     start_x = -(image_width * STEP) / 2
@@ -46,6 +73,8 @@ def draw_image(image_path, root):
     def draw_row(y):
         if y >= image_height:
             screen.update()
+            if save_enabled:
+                save_art(art_image)
             return
 
         for x in range(image_width):
@@ -60,13 +89,20 @@ def draw_image(image_path, root):
             pen.goto(screen_x, screen_y)
             pen.dot(DOT_SIZE, "white")
 
+            px = WIDTH / 2 + screen_x
+            py = HEIGHT / 2 - screen_y
+            art_draw.ellipse(
+                (px - radius, py - radius, px + radius, py + radius),
+                fill="white"
+            )
+
         screen.update()
         screen.ontimer(lambda: draw_row(y + 1), row_delay)
 
     draw_row(0)
 
 
-def select_image(root):
+def select_image(root, save_var):
     image_path = filedialog.askopenfilename(
         title="Select Image",
         filetypes=[
@@ -76,7 +112,7 @@ def select_image(root):
     )
 
     if image_path:
-        draw_image(image_path, root)
+        draw_image(image_path, root, save_var.get())
 
 
 def main():
@@ -89,6 +125,8 @@ def main():
     title_font = ("Courier New", 24, "bold")
     text_font = ("Courier New", 11)
     button_font = ("Courier New", 12, "bold")
+
+    save_var = tk.BooleanVar(value=False)
 
     title = tk.Label(
         root,
@@ -110,12 +148,26 @@ def main():
         font=text_font,
         justify="center"
     )
-    description.pack(pady=(0, 35))
+    description.pack(pady=(0, 25))
+
+    save_check = tk.Checkbutton(
+        root,
+        text="Save result after drawing",
+        variable=save_var,
+        bg="black",
+        fg="white",
+        selectcolor="black",
+        activebackground="black",
+        activeforeground="white",
+        font=text_font,
+        cursor="hand2"
+    )
+    save_check.pack(pady=(0, 15))
 
     select_button = tk.Button(
         root,
         text="◎  SELECT IMAGE",
-        command=lambda: select_image(root),
+        command=lambda: select_image(root, save_var),
         bg="black",
         fg="white",
         activebackground="white",
