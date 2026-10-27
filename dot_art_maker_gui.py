@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw
 WIDTH = 700
 HEIGHT = 700
 STEP = 5
+DOT_SPACING_OPTIONS = {"NEAR": 4, "FAR": 7}
 THRESHOLD = 100
 DRAW_TIME = 5
 
@@ -40,10 +41,10 @@ def save_art(art_image):
         )
 
 
-def draw_image(image_path, root, save_enabled, dot_size):
+def draw_image(image_path, root, save_enabled, dot_size, dot_spacing):
     try:
         image = Image.open(image_path).convert("L")
-        image.thumbnail((WIDTH // STEP, HEIGHT // STEP))
+        image.thumbnail((WIDTH // dot_spacing, HEIGHT // dot_spacing))
     except Exception:
         messagebox.showerror(
             "Dot Art Maker",
@@ -70,8 +71,8 @@ def draw_image(image_path, root, save_enabled, dot_size):
 
     image_width, image_height = image.size
 
-    start_x = -(image_width * STEP) / 2
-    start_y = (image_height * STEP) / 2
+    start_x = -(image_width * dot_spacing) / 2
+    start_y = (image_height * dot_spacing) / 2
 
     row_delay = max(1, int((DRAW_TIME * 1000) / image_height))
 
@@ -90,8 +91,8 @@ def draw_image(image_path, root, save_enabled, dot_size):
             if brightness < THRESHOLD:
                 continue
 
-            screen_x = start_x + x * STEP
-            screen_y = start_y - y * STEP
+            screen_x = start_x + x * dot_spacing
+            screen_y = start_y - y * dot_spacing
 
             pen.goto(screen_x, screen_y)
             pen.dot(dot_size, "white")
@@ -115,7 +116,7 @@ def draw_image(image_path, root, save_enabled, dot_size):
     draw_row(0)
 
 
-def select_image(root, save_var, dot_size_var):
+def select_image(root, save_var, dot_size_var, spacing_var):
     image_path = filedialog.askopenfilename(
         title="Select Image",
         filetypes=[
@@ -129,14 +130,15 @@ def select_image(root, save_var, dot_size_var):
             image_path,
             root,
             save_var.get(),
-            dot_size_var.get()
+            dot_size_var.get(),
+            DOT_SPACING_OPTIONS[spacing_var.get()]
         )
 
 
 def main():
     root = tk.Tk()
     root.title("Dot Art Maker")
-    root.geometry("650x460")
+    root.geometry("650x540")
     root.resizable(False, False)
     root.configure(bg="black")
 
@@ -146,6 +148,7 @@ def main():
 
     save_var = tk.BooleanVar(value=False)
     dot_size_var = tk.IntVar(value=3)
+    spacing_var = tk.StringVar(value="NEAR")
 
     title = tk.Label(
         root,
@@ -154,20 +157,20 @@ def main():
         fg="white",
         font=title_font
     )
-    title.pack(pady=(45, 15))
+    title.pack(pady=(28, 12))
 
     description = tk.Label(
         root,
         text=(
             "Upload an image and turn it into dot art.\n"
-            "Choose your dot size and create your artwork."
+            "Choose dot size and spacing, then create your artwork."
         ),
         bg="black",
         fg="white",
         font=text_font,
         justify="center"
     )
-    description.pack(pady=(0, 18))
+    description.pack(pady=(0, 14))
 
     size_label = tk.Label(
         root,
@@ -179,7 +182,7 @@ def main():
     size_label.pack(pady=(0, 8))
 
     size_frame = tk.Frame(root, bg="black")
-    size_frame.pack(pady=(0, 15))
+    size_frame.pack(pady=(0, 12))
 
     sizes = [
         ("SMALL", 2),
@@ -202,6 +205,33 @@ def main():
             cursor="hand2"
         ).pack(side="left", padx=12)
 
+    spacing_label = tk.Label(
+        root,
+        text="CHOOSE DOT SPACING",
+        bg="black",
+        fg="white",
+        font=("Courier New", 11, "bold")
+    )
+    spacing_label.pack(pady=(0, 8))
+
+    spacing_frame = tk.Frame(root, bg="black")
+    spacing_frame.pack(pady=(0, 12))
+
+    for label, value in [("NEAR", "NEAR"), ("FAR", "FAR")]:
+        tk.Radiobutton(
+            spacing_frame,
+            text=label,
+            variable=spacing_var,
+            value=value,
+            bg="black",
+            fg="white",
+            selectcolor="#3E4A2C",
+            activebackground="black",
+            activeforeground="white",
+            font=text_font,
+            cursor="hand2"
+        ).pack(side="left", padx=18)
+
     save_check = tk.Checkbutton(
         root,
         text="Save result after drawing",
@@ -214,13 +244,13 @@ def main():
         font=text_font,
         cursor="hand2"
     )
-    save_check.pack(pady=(0, 15))
+    save_check.pack(pady=(0, 12))
 
     select_button = tk.Button(
         root,
         text="◎  SELECT IMAGE",
         command=lambda: select_image(
-            root, save_var, dot_size_var
+            root, save_var, dot_size_var, spacing_var
         ),
         bg="black",
         fg="white",
