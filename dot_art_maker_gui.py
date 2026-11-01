@@ -1,4 +1,3 @@
-
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import turtle
@@ -12,6 +11,59 @@ DOT_SPACING_OPTIONS = {"NEAR": 4, "FAR": 7}
 THRESHOLD = 100
 DRAW_TIME = 5
 
+
+# ---------------------------------------------------------------------------
+# Pure logic (no GUI) - these functions are easy to unit test
+# ---------------------------------------------------------------------------
+
+def load_grayscale(image_path, dot_spacing):
+    """Open an image, convert it to grayscale and shrink it so that
+    one pixel = one dot fits inside the canvas."""
+    image = Image.open(image_path).convert("L")
+    image.thumbnail((WIDTH // dot_spacing, HEIGHT // dot_spacing))
+    return image
+
+
+def compute_row_dots(image, y, dot_spacing, threshold=THRESHOLD):
+    """Return turtle (x, y) coordinates of every dot to draw in row y.
+    Pixels darker than the threshold are skipped."""
+    image_width, image_height = image.size
+    start_x = -(image_width * dot_spacing) / 2
+    start_y = (image_height * dot_spacing) / 2
+
+    dots = []
+    for x in range(image_width):
+        if image.getpixel((x, y)) < threshold:
+            continue
+        dots.append((start_x + x * dot_spacing, start_y - y * dot_spacing))
+    return dots
+
+
+def screen_to_pixel(screen_x, screen_y):
+    """Convert turtle coordinates (origin at center, y up) to
+    PIL coordinates (origin at top-left, y down)."""
+    return WIDTH / 2 + screen_x, HEIGHT / 2 - screen_y
+
+
+def draw_dot_on_art(art_draw, screen_x, screen_y, dot_size):
+    """Draw one white dot on the PIL image used for saving."""
+    radius = dot_size / 2
+    px, py = screen_to_pixel(screen_x, screen_y)
+    art_draw.ellipse(
+        (px - radius, py - radius, px + radius, py + radius),
+        fill="white"
+    )
+
+
+def compute_row_delay(image_height):
+    """Milliseconds to wait between rows so the whole drawing
+    takes about DRAW_TIME seconds."""
+    return max(1, int((DRAW_TIME * 1000) / image_height))
+
+
+# ---------------------------------------------------------------------------
+# GUI code
+# ---------------------------------------------------------------------------
 
 def save_art(art_image):
     save_path = filedialog.asksaveasfilename(
@@ -43,8 +95,7 @@ def save_art(art_image):
 
 def draw_image(image_path, root, save_enabled, dot_size, dot_spacing):
     try:
-        image = Image.open(image_path).convert("L")
-        image.thumbnail((WIDTH // dot_spacing, HEIGHT // dot_spacing))
+        image = load_grayscale(image_path, dot_spacing)
     except Exception:
         messagebox.showerror(
             "Dot Art Maker",
@@ -67,14 +118,9 @@ def draw_image(image_path, root, save_enabled, dot_size, dot_spacing):
 
     art_image = Image.new("RGB", (WIDTH, HEIGHT), "black")
     art_draw = ImageDraw.Draw(art_image)
-    radius = dot_size / 2
 
-    image_width, image_height = image.size
-
-    start_x = -(image_width * dot_spacing) / 2
-    start_y = (image_height * dot_spacing) / 2
-
-    row_delay = max(1, int((DRAW_TIME * 1000) / image_height))
+    image_height = image.size[1]
+    row_delay = compute_row_delay(image_height)
 
     def draw_row(y):
         if y >= image_height:
@@ -85,30 +131,10 @@ def draw_image(image_path, root, save_enabled, dot_size, dot_spacing):
 
             return
 
-        for x in range(image_width):
-            brightness = image.getpixel((x, y))
-
-            if brightness < THRESHOLD:
-                continue
-
-            screen_x = start_x + x * dot_spacing
-            screen_y = start_y - y * dot_spacing
-
+        for screen_x, screen_y in compute_row_dots(image, y, dot_spacing):
             pen.goto(screen_x, screen_y)
             pen.dot(dot_size, "white")
-
-            px = WIDTH / 2 + screen_x
-            py = HEIGHT / 2 - screen_y
-
-            art_draw.ellipse(
-                (
-                    px - radius,
-                    py - radius,
-                    px + radius,
-                    py + radius
-                ),
-                fill="white"
-            )
+            draw_dot_on_art(art_draw, screen_x, screen_y, dot_size)
 
         screen.update()
         screen.ontimer(lambda: draw_row(y + 1), row_delay)

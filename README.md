@@ -35,6 +35,12 @@ Make sure Python and Pillow are installed, then run:
 python dot_art_maker_gui.py
 ```
 
+## test
+
+```bash
+python test.py
+```
+
 Select an image, choose your preferred dot size and spacing, and the drawing process will start automatically.
 
 ## 🎛️ Options
