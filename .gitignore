@@ -50,3 +50,5 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+
+app.ico
